@@ -2,8 +2,10 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const port = process.env.PORT || 5000;
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
+
 // middleware
 app.use(cors())
 app.use(express.json())
@@ -30,7 +32,28 @@ async function run() {
     const reviewCollection = client.db("bistroRestaurantDB").collection("reviews");
     const cartCollection = client.db("bistroRestaurantDB").collection("carts");
     
-    // users api
+    // jwt related api
+    app.post("/jwt", (req, res)=>{
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1d'})
+      res.send({token});
+    })
+    //middleware
+    const verifyToken = (req, res, next)=>{
+      if(!req.headers.authorization){
+        return res.status(401).send({message: "forbidden access"})
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
+        if(err){
+          return res.status(401).send({message: "forbidden access"})
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+
+    // users Related api
     app.post("/users", async(req, res)=>{
       const user = req.body;
 
@@ -44,7 +67,7 @@ async function run() {
       res.send(result);
     })
 
-    app.get("/users", async(req, res)=>{
+    app.get("/users", verifyToken, async(req, res)=>{
       const result = await userCollection.find().toArray();
       res.send(result);
     })
