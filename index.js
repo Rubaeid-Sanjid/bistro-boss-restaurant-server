@@ -226,11 +226,26 @@ async function run() {
           $in: paymentInfo.cartIds.map((id) => new ObjectId(id)),
         },
       };
-      
+
       const deleteResult = await cartCollection.deleteMany(query);
       res.send({ paymentResult, deleteResult });
     });
-    
+
+    app.get("/payment", async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/payment/:email", verifyToken, async (req, res) => {
+      const query = { email: req.params.email };
+
+      if (req.params.email !== req.decoded.email) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
